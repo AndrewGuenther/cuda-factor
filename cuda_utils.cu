@@ -8,9 +8,8 @@ void cmpz_to_mpz(cmpz_t *target, mpz_t value) {
    mpz_import(value, WORDS_PER_INT, -1, sizeof(unsigned int), 0, 0, target);
 }
 
-__global__ void cuda_gcd(cmpz_t *keys, unsigned int *result_matrix, unsigned int num_keys) {
-   cmpz_t *u, *v, *t;
 
+__global__ void factor_keys(cmpz_t *keys, unsigned int *result_matrix, unsigned int num_keys) {
    unsigned long long position = (blockDim.x * blockIdx.x) + (blockDim.y * blockIdx.y) + blockIdx.z;
    unsigned long long x = position / num_keys;
    unsigned long long y = position % num_keys;
@@ -19,15 +18,26 @@ __global__ void cuda_gcd(cmpz_t *keys, unsigned int *result_matrix, unsigned int
       return;
    }
 
-   u = keys + x;
-   v = keys + y;
+   cmpz_t u, v;
+   cmpz_t result;
 
+   u = keys[x];
+   v = keys[y];
+
+   cuda_gcd(&result, u, v);
+
+   result_matrix[blockIdx.x] = __any(result.digits[threadIdx.x]);
+}
+
+__device__ void cuda_gcd(cmpz_t *result, cmpz_t a, cmpz_t b) {
+   cmpz_t *t, *u = &a, *v = &b;
+   
    while (__any(v->digits[threadIdx.x])) {
       /* remove all factors of 2 in v -- they are not common */
       /*   note: v is not zero, so while will terminate */
-      while (!cmpz_tz(v)) {  /* Loop X */
-         cmpz_rshift(v, v);
-      }
+      //while (!cmpz_tz(v)) {  /* Loop X */
+      //   cmpz_rshift(v, v);
+      //}
 
       /* Now u and v are both odd. Swap if necessary so u <= v,
          then set v = v - u (which is even). For bignums, the
@@ -41,7 +51,7 @@ __global__ void cuda_gcd(cmpz_t *keys, unsigned int *result_matrix, unsigned int
       cmpz_sub(v, v, u);
    }
 
-   result_matrix[blockIdx.x] = __any(v->digits[threadIdx.x]);
+   *result = *u;
 }
 
 // Shift value right by 1 bit and store result in result
@@ -82,13 +92,13 @@ __device__ int cmpz_tz(cmpz_t *value) {
 }
 
 __device__ int cmpz_gt(cmpz_t *a, cmpz_t *b) {
-   unsigned char result[WORDS_PER_INT];
-   result[threadIdx.x] = a->digits[threadIdx.x] >= b->digits[threadIdx.x];
+   __shared__ unsigned char result[WORDS_PER_INT];
+   result[threadIdx.x] = a->digits[threadIdx.x] - b->digits[threadIdx.x];
 
-   int i = 0;
-   while (result[i] == 1) {
-      i++;
+   int i = WORDS_PER_INT - 1;
+   while (result[i] == 0) {
+      i--;
    }
 
-   return i == WORDS_PER_INT;
+   return result[i] > 0;
 }

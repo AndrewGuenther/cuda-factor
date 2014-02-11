@@ -9,6 +9,7 @@ __global__ void test_rshift(cmpz_t *result, cmpz_t *a);
 __global__ void test_sub(cmpz_t *result, cmpz_t *a, cmpz_t *b);
 __global__ void test_tz(cmpz_t *result, cmpz_t *a);
 __global__ void test_gt(cmpz_t *result, cmpz_t *a, cmpz_t *b);
+__global__ void test_gcd(cmpz_t *result, cmpz_t *a, cmpz_t *b);
 
 int main(int argc, char **argv) {
    FILE *fa, *fb;
@@ -60,8 +61,8 @@ int main(int argc, char **argv) {
 
    CUDA_SAFE_CALL(cudaMalloc((void **)&dev_res, sizeof(cmpz_t)));
 
-   CUDA_SAFE_CALL(cudaMemset(dev_res, 0, sizeof(cmpz_t)));
    printf("Test rshift\n");
+   CUDA_SAFE_CALL(cudaMemset(dev_res, 0, sizeof(cmpz_t)));
    test_rshift<<<1, WORDS_PER_INT>>>(dev_res, dev_a);
    CUDA_SAFE_CALL(cudaMemcpy(&cres, dev_res, sizeof(cmpz_t), TO_HOST));
    cmpz_to_mpz(&cres, result);
@@ -75,8 +76,8 @@ int main(int argc, char **argv) {
    printf("\n");
    */
 
-   CUDA_SAFE_CALL(cudaMemset(dev_res, 0, sizeof(cmpz_t)));
    printf("Test sub\n");
+   CUDA_SAFE_CALL(cudaMemset(dev_res, 0, sizeof(cmpz_t)));
    test_sub<<<1, WORDS_PER_INT>>>(dev_res, dev_a, dev_b);
    CUDA_SAFE_CALL(cudaMemcpy(&cres, dev_res, sizeof(cmpz_t), TO_HOST));
    cmpz_to_mpz(&cres, result);
@@ -90,21 +91,38 @@ int main(int argc, char **argv) {
    printf("\n");
    */
 
-   CUDA_SAFE_CALL(cudaMemset(dev_res, 0, sizeof(cmpz_t)));
    printf("Test tz\n");
+   CUDA_SAFE_CALL(cudaMemset(dev_res, 0, sizeof(cmpz_t)));
    test_tz<<<1, WORDS_PER_INT>>>(dev_res, dev_a);
    CUDA_SAFE_CALL(cudaMemcpy(&cres, dev_res, sizeof(cmpz_t), TO_HOST));
    cmpz_to_mpz(&cres, result);
    print_int(result);
    printf("\n");
 
-   CUDA_SAFE_CALL(cudaMemset(dev_res, 0, sizeof(cmpz_t)));
    printf("Test gt\n");
+   CUDA_SAFE_CALL(cudaMemset(dev_res, 0, sizeof(cmpz_t)));
    test_gt<<<1, WORDS_PER_INT>>>(dev_res, dev_a, dev_b);
    CUDA_SAFE_CALL(cudaMemcpy(&cres, dev_res, sizeof(cmpz_t), TO_HOST));
    cmpz_to_mpz(&cres, result);
    print_int(result);
    printf("\n");
+
+   CUDA_SAFE_CALL(cudaMemset(dev_res, 0, sizeof(cmpz_t)));
+   test_gt<<<1, WORDS_PER_INT>>>(dev_res, dev_b, dev_a);
+   CUDA_SAFE_CALL(cudaMemcpy(&cres, dev_res, sizeof(cmpz_t), TO_HOST));
+   cmpz_to_mpz(&cres, result);
+   print_int(result);
+   printf("\n");
+
+   /*
+   printf("Test gcd\n");
+   CUDA_SAFE_CALL(cudaMemset(dev_res, 0, sizeof(cmpz_t)));
+   test_gcd<<<1, WORDS_PER_INT>>>(dev_res, dev_a, dev_b);
+   CUDA_SAFE_CALL(cudaMemcpy(&cres, dev_res, sizeof(cmpz_t), TO_HOST));
+   cmpz_to_mpz(&cres, result);
+   print_int(result);
+   printf("\n");
+   */
 }
 
 __global__ void test_sanity(int *wut) {
@@ -125,4 +143,8 @@ __global__ void test_tz(cmpz_t *result, cmpz_t *a) {
 
 __global__ void test_gt(cmpz_t *result, cmpz_t *a, cmpz_t *b) {
    result->digits[0] = cmpz_gt(a, b);
+}
+
+__global__ void test_gcd(cmpz_t *result, cmpz_t *a, cmpz_t *b) {
+   cuda_gcd(result, *a, *b);
 }

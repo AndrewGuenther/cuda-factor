@@ -20,7 +20,8 @@ typedef struct {
 
 void cmpz_init_set(cmpz_t *target, mpz_t value);
 void cmpz_to_mpz(cmpz_t *target, mpz_t value);
-__global__ void cuda_gcd(cmpz_t *keys, unsigned int *result_matrix, unsigned int num_keys);
+__global__ void factor_keys(cmpz_t *keys, unsigned int *result_matrix, unsigned int num_keys);
+__device__ void cuda_gcd(cmpz_t *result, cmpz_t a, cmpz_t b);
 __device__ void cmpz_rshift(cmpz_t *result, cmpz_t *value);
 __device__ void cmpz_sub(cmpz_t *diff, cmpz_t *a, cmpz_t *b);
 __device__ int cmpz_tz(cmpz_t *value);
