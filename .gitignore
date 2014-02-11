@@ -1,0 +1,5 @@
+grademe.py
+*.out
+*.tar
+*.o
+inputs/

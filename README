@@ -1,0 +1,26 @@
+ANSWERS
+Part III
+   keys 2 and 5 share a factor
+
+Part V
+   Using key 2, the following message can be extracted from the cipher text:
+   "all your Ps are belong to me"
+
+BUILDING
+The default make target will compile all test programs.
+
+USAGE
+my_gcd <a> <b>
+   my_gcd takes two arguments and prints their gcd
+
+gcd <file a> <file b>
+   gcd takes two files as arguments and prints the gcd of their contents.
+
+rsa_test <test file>
+   rsa_test takes an input number, generates a key pair, encrypts and then
+   decrypts the given input and outputs the result.
+   
+crack <n file> <p file> <cipher file>
+   crack takes a file which holds an n value and a p value and uses that
+   information to decrypt the code in the cipher file. It then outputs the
+   decrypted value as an integer and as hex.
