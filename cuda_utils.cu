@@ -36,12 +36,9 @@ __device__ void cuda_gcd(cmpz_t *result, cmpz_t *in_u, cmpz_t *in_v) {
    v.digits[threadIdx.x] = in_v->digits[threadIdx.x];
 
    while (__any(v.digits[threadIdx.x])) {
-      if (threadIdx.x == 0) {
-         printf("iter\n");
-      }
       /* remove all factors of 2 in v -- they are not common */
       /*   note: v is not zero, so while will terminate */
-      while (!cmpz_tz(&v)) {  /* Loop X */
+      while (cmpz_tz(&v)) {  /* Loop X */
          cmpz_rshift(&v, &v);
       }
 
@@ -50,18 +47,18 @@ __device__ void cuda_gcd(cmpz_t *result, cmpz_t *in_u, cmpz_t *in_v) {
          swapping is just pointer movement, and the subtraction
          can be done in-place. */
       if (cmpz_gt(&u, &v)) {
-         if (threadIdx.x == 0) {
-            printf("swap\n");
-         }
          t.digits[threadIdx.x] = u.digits[threadIdx.x];
+         __syncthreads();
          u.digits[threadIdx.x] = v.digits[threadIdx.x];
+         __syncthreads();
          v.digits[threadIdx.x] = t.digits[threadIdx.x];
+         __syncthreads();
       }
 
       cmpz_sub(&v, &v, &u);
    }
 
-   *result = u;
+   result->digits[threadIdx.x] = u.digits[threadIdx.x];
 }
 
 // Shift value right by 1 bit and store result in result
@@ -104,7 +101,7 @@ __device__ void cmpz_sub(cmpz_t *diff, cmpz_t *in_a, cmpz_t *in_b) {
 }
 
 __device__ int cmpz_tz(cmpz_t *value) {
-   return value->digits[0] & 0x1;
+   return !(value->digits[0] & 0x1);
 }
 
 __device__ int cmpz_gt(cmpz_t *a, cmpz_t *b) {
