@@ -15,7 +15,6 @@ gpu_crack: gpu_crack.cu cuda_utils.o utils.o
 
 test: test_cuda.cu cuda_utils.o utils.o
 	$(NVCC) $(CUDA_FLAGS) $(CFLAGS) -o test_cuda test_cuda.cu cuda_utils.o utils.o $(LIBS)
-	./test_cuda inputs/n2.in inputs/n5.in
 
 cuda_utils.o: cuda_utils.cu cuda_utils.h
 	$(NVCC) $(CUDA_FLAGS) $(CFLAGS) cuda_utils.cu $(LIBS) -c
