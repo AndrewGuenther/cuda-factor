@@ -47,20 +47,12 @@ int main(int argc, char **argv) {
    CUDA_SAFE_CALL(cudaMalloc((void **)&dev_result_matrix, num_keys * sizeof(char)));
    CUDA_SAFE_CALL(cudaMemset(dev_result_matrix, 0, num_keys * sizeof(char)));
 
-   cudaStream_t streams[NUM_STREAMS];
-   int stream = 0;
-   for (stream = 0; stream < NUM_STREAMS; stream++) {
-      cudaStreamCreate(&streams[stream]);
-   }
-
    // Run the kernel
    unsigned int offset = 0;
-   stream = 0;
    while (offset < (num_keys * num_keys) / 2) {
       fprintf(stderr, "Kernel call: %d\n", offset);
-      factor_keys<<<NUM_BLOCKS, WORDS_PER_INT, 0, streams[stream % NUM_STREAMS]>>>(dev_keys, dev_result_matrix, num_keys, offset);
+      factor_keys<<<NUM_BLOCKS, WORDS_PER_INT>>>(dev_keys, dev_result_matrix, num_keys, offset);
       offset += NUM_BLOCKS;
-      stream++;
    }
 
    // Copy the result matrix back

@@ -10,7 +10,7 @@
 #define TO_HOST cudaMemcpyDeviceToHost
 
 #define THREADS_PER_BLOCK WORDS_PER_INT
-#define NUM_BLOCKS 65504
+#define NUM_BLOCKS 65535
 #define NUM_STREAMS 4
 
 typedef struct {

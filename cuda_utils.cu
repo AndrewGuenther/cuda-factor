@@ -12,7 +12,7 @@ void cmpz_to_mpz(cmpz_t *target, mpz_t value) {
 
 
 __global__ void factor_keys(cmpz_t *keys, unsigned char *result_matrix, unsigned int num_keys, unsigned int offset) {
-   unsigned long long position = blockIdx.x + offset;
+   unsigned long long position = offset + blockIdx.x;
 
    if (position > (num_keys * num_keys) / 2) {
       return;
