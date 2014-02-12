@@ -114,7 +114,6 @@ int main(int argc, char **argv) {
    print_int(result);
    printf("\n");
 
-   /*
    printf("Test gcd\n");
    CUDA_SAFE_CALL(cudaMemset(dev_res, 0, sizeof(cmpz_t)));
    test_gcd<<<1, WORDS_PER_INT>>>(dev_res, dev_a, dev_b);
@@ -122,7 +121,6 @@ int main(int argc, char **argv) {
    cmpz_to_mpz(&cres, result);
    print_int(result);
    printf("\n");
-   */
 }
 
 __global__ void test_sanity(int *wut) {

@@ -33,33 +33,62 @@ int main(int argc, char **argv) {
    fclose(f);
    num_keys--;
 
-   printf("%d KEYS READ SUCCESSFULLY\n", num_keys);
+   DEBUG("KEYS READ SUCCESSFULLY\n");
 
    cmpz_t *dev_keys;
-   unsigned int *dev_result_matrix, *result_matrix;
-   result_matrix = (unsigned int *)calloc(1, RESULT_BITMAP_SIZE);
+   unsigned char *dev_result_matrix, *result_matrix;
+   result_matrix = (unsigned char *)calloc(sizeof(char), num_keys);
 
    // Allocate space on the card and copy the keys
    CUDA_SAFE_CALL(cudaMalloc((void **)&dev_keys, sizeof(cmpz_t) * num_keys));
    CUDA_SAFE_CALL(cudaMemcpy(dev_keys, keys, sizeof(cmpz_t) * num_keys, TO_DEV));
 
    // Allocate space for the result bitmap
-   CUDA_SAFE_CALL(cudaMalloc((void **)&dev_result_matrix, RESULT_BITMAP_SIZE));
-   CUDA_SAFE_CALL(cudaMemset(dev_result_matrix, 0, RESULT_BITMAP_SIZE));
+   CUDA_SAFE_CALL(cudaMalloc((void **)&dev_result_matrix, num_keys * sizeof(char)));
+   CUDA_SAFE_CALL(cudaMemset(dev_result_matrix, 0, num_keys * sizeof(char)));
+
+   cudaStream_t streams[NUM_STREAMS];
+   int stream = 0;
+   for (stream = 0; stream < NUM_STREAMS; stream++) {
+      cudaStreamCreate(&streams[stream]);
+   }
 
    // Run the kernel
-   cuda_gcd<<<WORDS_PER_INT, FACTORS_PER_KERNEL>>>(dev_keys, dev_result_matrix, num_keys);
+   unsigned int offset = 0;
+   stream = 0;
+   while (offset < (num_keys * num_keys) / 2) {
+      fprintf(stderr, "Kernel call: %d\n", offset);
+      factor_keys<<<NUM_BLOCKS, WORDS_PER_INT, 0, streams[stream % NUM_STREAMS]>>>(dev_keys, dev_result_matrix, num_keys, offset);
+      offset += NUM_BLOCKS;
+      stream++;
+   }
 
    // Copy the result matrix back
-   CUDA_SAFE_CALL(cudaMemcpy(result_matrix, dev_result_matrix, RESULT_BITMAP_SIZE, TO_HOST));
+   CUDA_SAFE_CALL(cudaMemcpy(result_matrix, dev_result_matrix, num_keys * sizeof(char), TO_HOST));
 
    // Free device mallocs
    CUDA_SAFE_CALL(cudaFree(dev_result_matrix));
    CUDA_SAFE_CALL(cudaFree(dev_keys));
 
    // Print the first ten elements of the result matrix
-   int idx;
-   for (idx = 0; idx < 10; idx++) {
-      printf("%u\n", result_matrix[idx]);
+   mpz_t gcd_res, a, b;
+   mpz_init(gcd_res);
+   mpz_init(a);
+   mpz_init(b);
+   int idx, cmp;
+   for (idx = 0; idx < num_keys; idx++) {
+      if (result_matrix[idx]) {
+         for (cmp = idx + 1; cmp < num_keys; cmp++) {
+            if (result_matrix[cmp]) {
+               cmpz_to_mpz(&keys[idx], a);
+               cmpz_to_mpz(&keys[cmp], b);
+               gcd(a, b, gcd_res);
+               if (mpz_cmp_ui(gcd_res, 1)) {
+                  output_factor(a, gcd_res);
+                  output_factor(b, gcd_res);
+               }
+            }
+         }
+      }
    }
 }

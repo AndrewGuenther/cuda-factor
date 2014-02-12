@@ -1,5 +1,7 @@
 #include "cuda_utils.h"
 
+#define CUDA_DEBUG(str) if (threadIdx.x == 0) {printf(str);}
+
 void cmpz_init_set(cmpz_t *target, mpz_t value) {
    mpz_export(target, NULL, -1, sizeof(cmpz_t), 0, 0, value);
 }
@@ -9,27 +11,39 @@ void cmpz_to_mpz(cmpz_t *target, mpz_t value) {
 }
 
 
-__global__ void factor_keys(cmpz_t *keys, unsigned int *result_matrix, unsigned int num_keys) {
-   unsigned long long position = (blockDim.x * blockIdx.x) + (blockDim.y * blockIdx.y) + blockIdx.z;
-   unsigned long long x = position / num_keys;
-   unsigned long long y = position % num_keys;
+__global__ void factor_keys(cmpz_t *keys, unsigned char *result_matrix, unsigned int num_keys, unsigned int offset) {
+   unsigned long long position = blockIdx.x + offset;
 
-   if (y > x) {
+   if (position > (num_keys * num_keys) / 2) {
       return;
+   }
+
+   unsigned int x = position / num_keys;
+   unsigned int y = position % num_keys;
+
+   if (x < y) {
+      x = num_keys - x - 1;
+      y = num_keys - y - 1;
    }
 
    cmpz_t *u, *v;
    cmpz_t result;
 
-   u = keys + x;
-   v = keys + y;
+   int i;
+   for (i = 0; i < WORDS_PER_INT; i++) {
+      result.digits[i] = 0;
+   }
 
-   cuda_gcd(&result, u, v);
+   u = &keys[x];
+   v = &keys[y];
 
-   result_matrix[blockIdx.x] = __any(result.digits[threadIdx.x]);
+   int has_gcd = cuda_gcd(&result, u, v);
+
+   result_matrix[x] |= has_gcd;
+   result_matrix[y] |= has_gcd;
 }
 
-__device__ void cuda_gcd(cmpz_t *result, cmpz_t *in_u, cmpz_t *in_v) {
+__device__ int cuda_gcd(cmpz_t *result, cmpz_t *in_u, cmpz_t *in_v) {
    __shared__ cmpz_t su, sv;
    cmpz_t *t, *u = &su, *v = &sv;
 
@@ -38,26 +52,21 @@ __device__ void cuda_gcd(cmpz_t *result, cmpz_t *in_u, cmpz_t *in_v) {
    __syncthreads();
 
    while (__any(v->digits[threadIdx.x])) {
-      /* remove all factors of 2 in v -- they are not common */
-      /*   note: v is not zero, so while will terminate */
-      while (cmpz_tz(v)) {  /* Loop X */
+      while (cmpz_tz(v)) {
          cmpz_rshift(v, v);
       }
 
-      /* Now u and v are both odd. Swap if necessary so u <= v,
-         then set v = v - u (which is even). For bignums, the
-         swapping is just pointer movement, and the subtraction
-         can be done in-place. */
       if (cmpz_gt(u, v)) {
          t = u;
          u = v;
          v = t;
       }
-
       cmpz_sub(v, v, u);
    }
 
-   result->digits[threadIdx.x] = u->digits[threadIdx.x];
+   cmpz_rshift(u, u);
+   return __any(u->digits[threadIdx.x]);
+   //result->digits[threadIdx.x] = u->digits[threadIdx.x];
 }
 
 // Shift value right by 1 bit and store result in result
@@ -68,7 +77,9 @@ __device__ void cmpz_rshift(cmpz_t *result, cmpz_t *value) {
    if (i < 31) {
       savedBit = value->digits[i + 1];
    }
+   __syncthreads();
    result->digits[i] = (unsigned int)((value->digits[i] >> 1) | (savedBit << 31));
+   __syncthreads();
 }
 
 // Sets diff to a - b
@@ -77,26 +88,29 @@ __device__ void cmpz_sub(cmpz_t *diff, cmpz_t *a, cmpz_t *b) {
    unsigned int t;
 
    if (!threadIdx.x) {
-      borrows[31] = 0;
+      borrows[0] = 0;
    }
 
    t = a->digits[threadIdx.x] - b->digits[threadIdx.x];
 
-   if (threadIdx.x) {
-      borrows[threadIdx.x - 1] = (t > a->digits[threadIdx.x]);
+   if (threadIdx.x != WORDS_PER_INT - 1) {
+      borrows[threadIdx.x + 1] = (t > a->digits[threadIdx.x]);
    }
+   __syncthreads();
 
    while (__any(borrows[threadIdx.x])) {
       if (borrows[threadIdx.x]) {
          t--;
       }
 
-      if (threadIdx.x) {
-         borrows[threadIdx.x - 1] = (t == 0xffffffffU && 
+      if (threadIdx.x != WORDS_PER_INT - 1) {
+         borrows[threadIdx.x + 1] = (t == 0xffffffffU && 
                borrows[threadIdx.x]);
       }
    }
+   __syncthreads();
    diff->digits[threadIdx.x] = t;
+   __syncthreads();
 }
 /*
    int i = threadIdx.x;
@@ -123,13 +137,12 @@ __device__ int cmpz_tz(cmpz_t *value) {
 }
 
 __device__ int cmpz_gt(cmpz_t *a, cmpz_t *b) {
-   __shared__ int result[WORDS_PER_INT];
-   result[threadIdx.x] = a->digits[threadIdx.x] - b->digits[threadIdx.x];
-
+   __shared__ double result[WORDS_PER_INT];
+   result[threadIdx.x] = (double)(a->digits[threadIdx.x]) - b->digits[threadIdx.x];
    __syncthreads();
 
    int i = WORDS_PER_INT - 1;
-   while (result[i] == 0) {
+   while (result[i] == 0 && i) {
       i--;
    }
 

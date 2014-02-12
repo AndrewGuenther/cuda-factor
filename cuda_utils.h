@@ -11,8 +11,7 @@
 
 #define THREADS_PER_BLOCK WORDS_PER_INT
 #define NUM_BLOCKS 65504
-#define FACTORS_PER_KERNEL NUM_BLOCKS
-#define RESULT_BITMAP_SIZE (FACTORS_PER_KERNEL / sizeof(unsigned int) / 8)
+#define NUM_STREAMS 4
 
 typedef struct {
    unsigned int digits[WORDS_PER_INT];
@@ -20,8 +19,8 @@ typedef struct {
 
 void cmpz_init_set(cmpz_t *target, mpz_t value);
 void cmpz_to_mpz(cmpz_t *target, mpz_t value);
-__global__ void factor_keys(cmpz_t *keys, unsigned int *result_matrix, unsigned int num_keys);
-__device__ void cuda_gcd(cmpz_t *result, cmpz_t *a, cmpz_t *b);
+__global__ void factor_keys(cmpz_t *keys, unsigned char *result_matrix, unsigned int num_keys, unsigned int offset);
+__device__ int cuda_gcd(cmpz_t *result, cmpz_t *a, cmpz_t *b);
 __device__ void cmpz_rshift(cmpz_t *result, cmpz_t *value);
 __device__ void cmpz_sub(cmpz_t *diff, cmpz_t *a, cmpz_t *b);
 __device__ int cmpz_tz(cmpz_t *value);
