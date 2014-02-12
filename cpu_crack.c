@@ -6,8 +6,8 @@
 
 int main(int argc, char **argv) {
    FILE *f;
-   unsigned int num_keys = 0;
-   unsigned int key_arr_size = KEY_CHUNK;
+   uint32_t num_keys = 0;
+   uint32_t key_arr_size = KEY_CHUNK;
    mpz_t *keys = (mpz_t *)malloc(sizeof(mpz_t) * key_arr_size);
 
    if (argc != 2) {

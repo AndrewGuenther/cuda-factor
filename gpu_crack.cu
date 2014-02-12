@@ -3,8 +3,8 @@
 
 int main(int argc, char **argv) {
    FILE *f;
-   unsigned int num_keys = 0;
-   unsigned int key_arr_size = KEY_CHUNK;
+   uint32_t num_keys = 0;
+   uint32_t key_arr_size = KEY_CHUNK;
    mpz_t input;
    cmpz_t *keys = (cmpz_t *)malloc(sizeof(cmpz_t) * key_arr_size);
 
@@ -48,7 +48,7 @@ int main(int argc, char **argv) {
    CUDA_SAFE_CALL(cudaMemset(dev_result_matrix, 0, num_keys * sizeof(char)));
 
    // Run the kernel
-   unsigned int offset = 0;
+   uint32_t offset = 0;
    while (offset < (num_keys * num_keys) / 2) {
       fprintf(stderr, "Kernel call: %d\n", offset);
       factor_keys<<<NUM_BLOCKS, WORDS_PER_INT>>>(dev_keys, dev_result_matrix, num_keys, offset);

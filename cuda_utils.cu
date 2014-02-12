@@ -7,19 +7,19 @@ void cmpz_init_set(cmpz_t *target, mpz_t value) {
 }
 
 void cmpz_to_mpz(cmpz_t *target, mpz_t value) {
-   mpz_import(value, WORDS_PER_INT, -1, sizeof(unsigned int), 0, 0, target);
+   mpz_import(value, WORDS_PER_INT, -1, sizeof(uint32_t), 0, 0, target);
 }
 
 
-__global__ void factor_keys(cmpz_t *keys, unsigned char *result_matrix, unsigned int num_keys, unsigned int offset) {
+__global__ void factor_keys(cmpz_t *keys, unsigned char *result_matrix, uint32_t num_keys, uint32_t offset) {
    unsigned long long position = offset + blockIdx.x;
 
    if (position > (num_keys * num_keys) / 2) {
       return;
    }
 
-   unsigned int x = position / num_keys;
-   unsigned int y = position % num_keys;
+   uint32_t x = position / num_keys;
+   uint32_t y = position % num_keys;
 
    if (x < y) {
       x = num_keys - x - 1;
@@ -73,19 +73,19 @@ __device__ int cuda_gcd(cmpz_t *result, cmpz_t *in_u, cmpz_t *in_v) {
 __device__ void cmpz_rshift(cmpz_t *result, cmpz_t *value) {
    int i = threadIdx.x;
 
-   unsigned int savedBit = 0;
+   uint32_t savedBit = 0;
    if (i < 31) {
       savedBit = value->digits[i + 1];
    }
    __syncthreads();
-   result->digits[i] = (unsigned int)((value->digits[i] >> 1) | (savedBit << 31));
+   result->digits[i] = (uint32_t)((value->digits[i] >> 1) | (savedBit << 31));
    __syncthreads();
 }
 
 // Sets diff to a - b
 __device__ void cmpz_sub(cmpz_t *diff, cmpz_t *a, cmpz_t *b) {
-   __shared__ unsigned int borrows[32];
-   unsigned int t;
+   __shared__ uint32_t borrows[32];
+   uint32_t t;
 
    if (!threadIdx.x) {
       borrows[0] = 0;
@@ -128,7 +128,7 @@ __device__ void cmpz_sub(cmpz_t *diff, cmpz_t *a, cmpz_t *b) {
 
    difference =(double)(a->digits[i]) - b->digits[i] + borrow + wtf;
 //printf("difference: %lf\n", difference);
-diff->digits[i] = (unsigned int) difference;
+diff->digits[i] = (uint32_t) difference;
 }
  */
 

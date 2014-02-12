@@ -2,6 +2,7 @@
 #define __UTILS_H__
 
 #include <gmp.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 

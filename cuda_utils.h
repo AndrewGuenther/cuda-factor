@@ -3,8 +3,9 @@
 
 #include "cutil.h"
 #include <gmp.h>
+#include <stdint.h>
 
-#define WORDS_PER_INT 1024 / 8 / sizeof(unsigned int)
+#define WORDS_PER_INT 1024 / 8 / sizeof(uint32_t)
 
 #define TO_DEV cudaMemcpyHostToDevice
 #define TO_HOST cudaMemcpyDeviceToHost
@@ -14,12 +15,12 @@
 #define NUM_STREAMS 4
 
 typedef struct {
-   unsigned int digits[WORDS_PER_INT];
+   uint32_t digits[WORDS_PER_INT];
 } cmpz_t;
 
 void cmpz_init_set(cmpz_t *target, mpz_t value);
 void cmpz_to_mpz(cmpz_t *target, mpz_t value);
-__global__ void factor_keys(cmpz_t *keys, unsigned char *result_matrix, unsigned int num_keys, unsigned int offset);
+__global__ void factor_keys(cmpz_t *keys, unsigned char *result_matrix, uint32_t num_keys, uint32_t offset);
 __device__ int cuda_gcd(cmpz_t *result, cmpz_t *a, cmpz_t *b);
 __device__ void cmpz_rshift(cmpz_t *result, cmpz_t *value);
 __device__ void cmpz_sub(cmpz_t *diff, cmpz_t *a, cmpz_t *b);
